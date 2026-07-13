@@ -1,0 +1,38 @@
+# Fly.io deployment — single machine, current in-memory job model.
+# See DEPLOY.md for the step-by-step first deploy and the upgrade path
+# (Postgres job queue + R2 storage + separate worker) for when a handful of
+# beta users becomes real concurrent load.
+
+app = "jumpcut"          # must be globally unique on Fly — change if taken
+primary_region = "sjc"   # pick whatever's closest to your beta users
+
+[build]
+
+[env]
+  JUMPCUT_HOME = "/data"
+  JUMPCUT_HOST = "0.0.0.0"
+
+# Whisper + ffmpeg are CPU-bound; give it real cores, not the smallest shared
+# tier, or transcription will crawl.
+[[vm]]
+  cpu_kind = "performance"
+  cpus = 2
+  memory_mb = 4096
+
+[[mounts]]
+  source = "jumpcut_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8756
+  force_https = true
+  auto_stop_machines = false   # keep it warm; whisper model load is not instant
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    grace_period = "30s"
+    interval = "15s"
+    method = "GET"
+    timeout = "5s"
+    path = "/api/capabilities"

@@ -1,0 +1,15 @@
+.git
+.jumpcut
+.venv
+.claude
+examples
+__pycache__
+*.pyc
+*.jumpcut.mp4
+*.jumpcut.srt
+multi_test.*
+.DS_Store
+Dockerfile
+.dockerignore
+fly.toml
+DEPLOY.md

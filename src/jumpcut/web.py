@@ -5,13 +5,17 @@ analyze / render in the browser, then preview original vs. edited side by side.
 
     uv run jumpcut-web
 
-Single-user, local-only tool — job state lives in memory, no auth, no queueing
-beyond "one job at a time per id". Not meant to be exposed to the network.
+Job state lives in memory (fine for a handful of beta users on one machine;
+history resets on redeploy — see DEPLOY.md for the upgrade path once that
+becomes a real constraint). Auth is opt-in: unset locally for zero-friction
+dev, required in production via JUMPCUT_AUTH_USER/JUMPCUT_AUTH_PASSWORD.
 """
 
 from __future__ import annotations
 
 import json
+import os
+import secrets
 import shutil
 import threading
 import uuid
@@ -19,16 +23,40 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+import base64
+import binascii
+
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from . import render as render_mod
 from .models import CutReason, EditPlan
 from .pipeline import PipelineOptions, has_anthropic, run_pipeline
 
-ROOT = Path(".jumpcut/web").resolve()
+
+def _auth_configured() -> tuple[str, str] | None:
+    user = os.environ.get("JUMPCUT_AUTH_USER")
+    password = os.environ.get("JUMPCUT_AUTH_PASSWORD")
+    return (user, password) if user and password else None
+
+
+def _check_basic_auth(header: str | None, expected: tuple[str, str]) -> bool:
+    if not header or not header.startswith("Basic "):
+        return False
+    try:
+        decoded = base64.b64decode(header[6:]).decode("utf-8")
+        got_user, _, got_pass = decoded.partition(":")
+    except (binascii.Error, UnicodeDecodeError):
+        return False
+    exp_user, exp_pass = expected
+    return secrets.compare_digest(got_user, exp_user) and secrets.compare_digest(got_pass, exp_pass)
+
+# JUMPCUT_HOME lets deployment (Fly volume, etc.) point this at a persistent
+# mount instead of a relative dir tied to wherever the process happened to
+# start. Defaults to the local dev behavior (.jumpcut/ next to the cwd).
+ROOT = Path(os.environ.get("JUMPCUT_HOME", ".jumpcut")).resolve() / "web"
 JOBS_DIR = ROOT / "jobs"
 
 
@@ -50,6 +78,22 @@ JOBS: dict[str, Job] = {}
 LOCK = threading.Lock()
 
 app = FastAPI(title="jumpcut")
+
+
+@app.middleware("http")
+async def basic_auth_gate(request: Request, call_next):
+    """Applied as ASGI middleware (not a route Depends) so it also covers the
+    /media static mount, which bypasses FastAPI's per-route dependency
+    injection. No-op unless JUMPCUT_AUTH_USER/PASSWORD are set."""
+    expected = _auth_configured()
+    if expected is not None:
+        header = request.headers.get("authorization")
+        if not _check_basic_auth(header, expected):
+            return Response(
+                status_code=401, content="Unauthorized",
+                headers={"WWW-Authenticate": 'Basic realm="jumpcut"'},
+            )
+    return await call_next(request)
 
 
 def _plan_stats(plan: EditPlan) -> dict[str, Any]:
@@ -234,7 +278,13 @@ def job_status(job_id: str):
 
 
 def main():
-    uvicorn.run("jumpcut.web:app", host="127.0.0.1", port=8756, reload=False)
+    # Local dev default stays 127.0.0.1 (this GUI has no auth — don't expose
+    # it to a network by accident). Containers/deployment set JUMPCUT_HOST=
+    # 0.0.0.0 explicitly, since Docker's port mapping can't reach a process
+    # bound to localhost-inside-the-container.
+    host = os.environ.get("JUMPCUT_HOST", "127.0.0.1")
+    port = int(os.environ.get("PORT", os.environ.get("JUMPCUT_PORT", "8756")))
+    uvicorn.run("jumpcut.web:app", host=host, port=port, reload=False)
 
 
 if __name__ == "__main__":
