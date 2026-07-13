@@ -20,3 +20,8 @@ multi_test.*
 
 # Editor/OS cruft
 .DS_Store
+
+# Claude Code runtime artifacts (launch.json itself IS tracked — this is
+# just its lock/state files)
+.claude/scheduled_tasks.lock
+.claude/*.lock

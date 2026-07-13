@@ -6,6 +6,18 @@
       "runtimeExecutable": "uv",
       "runtimeArgs": ["run", "jumpcut-web"],
       "port": 8756
+    },
+    {
+      "name": "jumpcut-webapp",
+      "runtimeExecutable": "webapp/node_modules/.bin/vite",
+      "runtimeArgs": ["webapp", "--port", "8758", "--strictPort", "--host", "127.0.0.1"],
+      "port": 8758
+    },
+    {
+      "name": "jumpcut-webapp-prod",
+      "runtimeExecutable": "webapp/node_modules/.bin/vite",
+      "runtimeArgs": ["preview", "webapp", "--port", "8760", "--strictPort", "--host", "127.0.0.1"],
+      "port": 8760
     }
   ]
 }

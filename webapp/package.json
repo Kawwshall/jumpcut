@@ -1,0 +1,21 @@
+{
+  "name": "jumpcut-webapp",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "jumpcut, browser-native: whisper + ffmpeg run entirely client-side via WebAssembly. Static site, no backend.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "@ffmpeg/core": "^0.12.10",
+    "@ffmpeg/util": "^0.12.2",
+    "@huggingface/transformers": "^4.2.0"
+  },
+  "devDependencies": {
+    "vite": "^6.0.0"
+  }
+}

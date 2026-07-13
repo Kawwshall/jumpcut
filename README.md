@@ -10,8 +10,10 @@ raw video(s) ──▶ stitch (if >1) ──▶ transcribe (whisper) ──▶ a
                                         word timeline          cut plan     final .mp4
 ```
 
-Two ways to use it: a **CLI** for scripting, and a local **web GUI** (drag &
-drop, live progress, before/after preview).
+Three ways to use it: a **CLI** for scripting, a local **web GUI** (drag &
+drop, live progress, before/after preview), and a **browser-native webapp**
+(`webapp/` — whisper + ffmpeg run entirely client-side via WebAssembly, no
+server, no upload — see `webapp/README.md`).
 
 ## Install
 

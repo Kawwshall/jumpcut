@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>jumpcut — runs entirely in your browser</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #060606; --panel: rgba(255,255,255,0.03); --border: rgba(255,255,255,0.10);
+    --border-hover: rgba(255,255,255,0.22); --text: #f2f2f2; --muted: #8f8f8f;
+    --muted-dim: #5a5a5a; --accent: #ffffff; --accent-grad: linear-gradient(135deg,#fff 0%,#c2c2c2 100%);
+    --accent-text: #060606; --mono: 'JetBrains Mono', ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    padding: 48px 20px 100px; letter-spacing: -0.01em;
+  }
+  .wrap { max-width: 820px; margin: 0 auto; }
+  .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .brand-mark {
+    width: 30px; height: 30px; border-radius: 9px; background: var(--accent-grad);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  h1 { font-size: 24px; margin: 0; font-weight: 800; letter-spacing: -0.03em; }
+  .sub { color: var(--muted); margin: 0 0 28px; font-size: 14.5px; line-height: 1.5; }
+  .badge {
+    display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--muted); border: 1px solid var(--border);
+    border-radius: 6px; padding: 3px 8px; margin-bottom: 18px;
+  }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 24px; margin-bottom: 20px; }
+  #drop {
+    border: 1.5px dashed var(--border); border-radius: 10px; padding: 32px 20px; text-align: center;
+    cursor: pointer; transition: border-color .15s, background .15s; background: rgba(255,255,255,0.015);
+  }
+  #drop:hover { border-color: var(--border-hover); }
+  #drop.drag { border-color: var(--accent); background: rgba(255,255,255,.05); }
+  #drop p { margin: 5px 0; color: var(--muted); font-size: 13px; }
+  #drop .big { color: var(--text); font-size: 14.5px; font-weight: 600; }
+  #fileInput { display: none; }
+  .options { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 20px; }
+  .opt {
+    display: flex; align-items: center; gap: 10px; font-size: 13.5px; background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border); border-radius: 10px; padding: 11px 13px;
+  }
+  .opt label { flex: 1; cursor: pointer; font-weight: 500; }
+  .switch { position: relative; width: 36px; height: 21px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+  .switch .track { position: absolute; inset: 0; background: rgba(255,255,255,0.1); border-radius: 999px; transition: background .15s; cursor: pointer; }
+  .switch .track::before { content:''; position:absolute; width:15px; height:15px; left:3px; top:3px; background:#cfd4e0; border-radius:50%; transition: transform .15s, background .15s; }
+  .switch input:checked + .track { background: var(--accent-grad); }
+  .switch input:checked + .track::before { transform: translateX(15px); background:#060606; }
+  .slider-row { grid-column: 1/-1; display:flex; align-items:center; gap:14px; font-size:13.5px; background: rgba(255,255,255,0.02); border:1px solid var(--border); border-radius:10px; padding:11px 13px; }
+  .slider-row input[type=range] { flex:1; accent-color: var(--accent); }
+  .slider-row span { font-family: var(--mono); font-size:12px; color:var(--muted); min-width:34px; }
+  button.primary {
+    margin-top: 22px; width: 100%; padding: 14px; border: none; border-radius: 11px;
+    background: var(--accent-grad); color: var(--accent-text); font-weight: 700; font-size: 15px; cursor: pointer;
+  }
+  button.primary:disabled { opacity: .35; cursor: not-allowed; }
+  #statusBox { font-size: 14px; margin-top: 16px; color: var(--text); }
+  #logBox {
+    display: none; margin-top: 10px; max-height: 160px; overflow-y: auto; background: #0d0e14;
+    border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-family: var(--mono);
+    font-size: 11.5px; color: var(--muted);
+  }
+  #results { display: none; }
+  video { width: 100%; border-radius: 10px; background: #000; margin-top: 12px; }
+  #statsBlock { font-size: 14px; margin-top: 10px; color: var(--muted); font-family: var(--mono); }
+  a.dl {
+    display: inline-block; margin-top: 14px; color: var(--accent-text); background: var(--accent-grad);
+    text-decoration: none; padding: 10px 18px; border-radius: 9px; font-size: 13px; font-weight: 700;
+  }
+  .privacy { font-size: 12.5px; color: var(--muted-dim); margin-top: 18px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <div class="brand-mark"><svg viewBox="0 0 24 24" width="16" height="16" fill="none"><path d="M4 4L20 20M20 4L4 20" stroke="#060606" stroke-width="3" stroke-linecap="round"/></svg></div>
+    <h1>jumpcut</h1>
+  </div>
+  <span class="badge">Runs 100% in your browser — nothing uploaded</span>
+  <p class="sub">Drop a video. Whisper transcribes it and ffmpeg edits it — both running as WebAssembly, entirely on your machine. No server ever sees your footage.</p>
+
+  <div class="panel">
+    <div id="drop">
+      <p class="big">Drag a video here, or click to choose a file</p>
+      <p>First run downloads a whisper model (~40-150MB) — cached after that</p>
+      <input type="file" id="fileInput" accept="video/*" />
+    </div>
+
+    <div class="options">
+      <div class="opt"><label for="optSilence">Cut silence</label><span class="switch"><input type="checkbox" id="optSilence" checked><span class="track"></span></span></div>
+      <div class="opt"><label for="optFillers">Remove filler words</label><span class="switch"><input type="checkbox" id="optFillers" checked><span class="track"></span></span></div>
+      <div class="opt"><label for="optCaptions">Burn in captions</label><span class="switch"><input type="checkbox" id="optCaptions" checked><span class="track"></span></span></div>
+      <div class="opt"><label for="optAggressive">Aggressive fillers</label><span class="switch"><input type="checkbox" id="optAggressive"><span class="track"></span></span></div>
+      <div class="slider-row">
+        <label for="optMinGap" style="flex:1">Min pause to cut</label>
+        <input type="range" id="optMinGap" min="0.2" max="2.0" step="0.1" value="0.6">
+        <span id="optMinGapVal">0.6s</span>
+      </div>
+    </div>
+
+    <button class="primary" id="submitBtn" disabled>Edit video</button>
+    <div id="statusBox"></div>
+    <div id="logBox"></div>
+  </div>
+
+  <div class="panel" id="results">
+    <video id="outVideo" controls></video>
+    <div id="statsBlock"></div>
+    <a class="dl" id="dlLink" download>Download video</a>
+  </div>
+
+  <p class="privacy">
+    No account, no upload, no tracking of your footage. This page loads whisper
+    (transformers.js) and ffmpeg (ffmpeg.wasm) as WebAssembly and runs the
+    entire edit — transcription, cut planning, caption burn-in, rendering —
+    locally in this tab. Closing the tab discards everything; nothing is sent
+    anywhere. Source: <a href="https://github.com/Kawwshall/jumpcut" style="color:var(--text)">github.com/Kawwshall/jumpcut</a>
+  </p>
+</div>
+
+<script>
+  document.getElementById('optMinGap').addEventListener('input', (e) => {
+    document.getElementById('optMinGapVal').textContent = e.target.value + 's';
+  });
+</script>
+<script type="module" src="/src/app.js"></script>
+</body>
+</html>
