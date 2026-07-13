@@ -1,0 +1,22 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# jumpcut working dir: downloads, per-job web outputs, scratch renders.
+# Can grow to hundreds of MB/GB locally — never belongs in the repo.
+.jumpcut/
+
+# Generated render outputs from local testing
+*.jumpcut.mp4
+*.jumpcut.srt
+multi_test.*
+
+# Editor/OS cruft
+.DS_Store

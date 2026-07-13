@@ -1,0 +1,577 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>jumpcut</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #060606;
+    --panel: rgba(255,255,255,0.03);
+    --panel-solid: #111111;
+    --border: rgba(255,255,255,0.10);
+    --border-hover: rgba(255,255,255,0.22);
+    --text: #f2f2f2;
+    --muted: #8f8f8f;
+    --muted-dim: #5a5a5a;
+    --accent: #ffffff;
+    --accent2: #cfcfcf;
+    --accent-grad: linear-gradient(135deg, #ffffff 0%, #c2c2c2 100%);
+    --accent-text: #060606;
+    --danger: #f2f2f2;
+    --amber: #f2f2f2;
+    --radius: 14px;
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    padding: 48px 20px 100px;
+    letter-spacing: -0.01em;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; }
+
+  .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .brand-mark {
+    width: 30px; height: 30px; border-radius: 9px; background: var(--accent-grad);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .brand-mark svg { width: 16px; height: 16px; }
+  h1 {
+    font-size: 24px; margin: 0; font-weight: 800; letter-spacing: -0.03em;
+    color: var(--text);
+  }
+  .sub { color: var(--muted); margin: 0 0 32px; font-size: 14.5px; line-height: 1.5; max-width: 640px; }
+
+  .step-label {
+    display: flex; align-items: center; gap: 10px; margin: 0 0 14px;
+    font-size: 12.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--muted-dim);
+  }
+  .step-label .num {
+    width: 20px; height: 20px; border-radius: 6px; background: var(--panel);
+    border: 1px solid var(--border); display: flex; align-items: center; justify-content: center;
+    font-size: 11px; color: var(--text); font-weight: 700;
+  }
+
+  .panel {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 24px; margin-bottom: 20px;
+    backdrop-filter: blur(20px);
+  }
+
+  #drop {
+    border: 1.5px dashed var(--border); border-radius: 10px; padding: 32px 20px;
+    text-align: center; cursor: pointer; transition: border-color .15s, background .15s;
+    background: rgba(255,255,255,0.015);
+  }
+  #drop:hover { border-color: var(--border-hover); }
+  #drop.drag { border-color: var(--accent); background: rgba(255,255,255,.05); }
+  #drop p { margin: 5px 0; color: var(--muted); font-size: 13px; }
+  #drop .big { color: var(--text); font-size: 14.5px; font-weight: 600; }
+  #drop .icon { font-size: 22px; margin-bottom: 8px; opacity: 0.7; }
+  #fileInput { display: none; }
+
+  .urlrow { display: flex; gap: 8px; margin-top: 14px; }
+  .urlrow input {
+    flex: 1; background: #0d0e14; border: 1px solid var(--border); color: var(--text);
+    border-radius: 9px; padding: 11px 13px; font-size: 13.5px; font-family: inherit;
+    transition: border-color .15s;
+  }
+  .urlrow input:focus { outline: none; border-color: var(--accent); }
+  .urlrow input::placeholder { color: var(--muted-dim); }
+  .urlrow button {
+    background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text);
+    border-radius: 9px; padding: 0 18px; font-size: 13px; cursor: pointer; font-weight: 600;
+    transition: border-color .15s, background .15s; font-family: inherit;
+  }
+  .urlrow button:hover { border-color: var(--accent); background: rgba(255,255,255,.08); }
+
+  /* Clip queue */
+  #queue { margin-top: 16px; display: flex; flex-direction: column; gap: 7px; }
+  .clip-row {
+    display: flex; align-items: center; gap: 11px; background: #0d0e14;
+    border: 1px solid var(--border); border-radius: 10px; padding: 10px 13px;
+    cursor: grab; user-select: none; transition: border-color .12s, transform .12s;
+  }
+  .clip-row:active { cursor: grabbing; }
+  .clip-row.dragging { opacity: 0.35; }
+  .clip-row.drag-over { border-color: var(--accent); transform: scale(1.01); }
+  .clip-row .handle { color: var(--muted-dim); font-size: 15px; letter-spacing: -2px; }
+  .clip-row .order-badge {
+    background: var(--accent-grad); color: var(--accent-text); font-weight: 800; font-size: 11px;
+    width: 21px; height: 21px; border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; flex-shrink: 0;
+  }
+  .clip-row .clip-name { flex: 1; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+  .clip-row .clip-dur { font-size: 11.5px; color: var(--muted); font-family: var(--mono); }
+  .clip-row .clip-warn { font-size: 11px; color: var(--amber); font-weight: 600; }
+  .clip-row .clip-kind {
+    font-size: 10.5px; color: var(--muted); border: 1px solid var(--border); border-radius: 5px;
+    padding: 2px 7px; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 600;
+  }
+  .clip-row .remove-btn {
+    background: none; border: none; color: var(--muted-dim); cursor: pointer; font-size: 15px;
+    padding: 2px 5px; line-height: 1; border-radius: 5px; transition: color .12s, background .12s;
+  }
+  .clip-row .remove-btn:hover { color: var(--text); background: rgba(255,255,255,0.1); }
+  #queueHint { font-size: 12px; color: var(--muted-dim); margin-top: 10px; display: none; }
+
+  .options {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 10px; margin-top: 22px;
+  }
+  .opt {
+    display: flex; align-items: center; gap: 10px; font-size: 13.5px;
+    background: rgba(255,255,255,0.02); border: 1px solid var(--border);
+    border-radius: 10px; padding: 11px 13px; transition: border-color .12s;
+  }
+  .opt:hover { border-color: var(--border-hover); }
+  .opt label { user-select: none; cursor: pointer; flex: 1; font-weight: 500; }
+  .opt .hint { color: var(--muted-dim); font-size: 11.5px; display: block; margin-top: 1px; font-weight: 400; }
+
+  /* toggle switch */
+  .switch { position: relative; width: 36px; height: 21px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+  .switch .track {
+    position: absolute; inset: 0; background: rgba(255,255,255,0.1); border-radius: 999px;
+    transition: background .15s; cursor: pointer;
+  }
+  .switch .track::before {
+    content: ''; position: absolute; width: 15px; height: 15px; left: 3px; top: 3px;
+    background: #cfd4e0; border-radius: 50%; transition: transform .15s, background .15s;
+  }
+  .switch input:checked + .track { background: var(--accent-grad); }
+  .switch input:checked + .track::before { transform: translateX(15px); background: #060606; }
+
+  .model-row {
+    grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; font-size: 13.5px;
+    background: rgba(255,255,255,0.02); border: 1px solid var(--border);
+    border-radius: 10px; padding: 11px 13px;
+  }
+  select {
+    background: #0d0e14; color: var(--text); border: 1px solid var(--border);
+    border-radius: 7px; padding: 6px 10px; font-size: 13px; font-family: inherit; cursor: pointer;
+  }
+  .slider-row {
+    grid-column: 1 / -1; display: flex; align-items: center; gap: 14px; font-size: 13.5px;
+    background: rgba(255,255,255,0.02); border: 1px solid var(--border);
+    border-radius: 10px; padding: 11px 13px;
+  }
+  .slider-row input[type=range] {
+    flex: 1; accent-color: var(--accent); cursor: pointer;
+  }
+  .slider-row span { font-family: var(--mono); font-size: 12px; color: var(--muted); min-width: 34px; }
+
+  button.primary {
+    margin-top: 22px; width: 100%; padding: 14px; border: none; border-radius: 11px;
+    background: var(--accent-grad); color: var(--accent-text); font-weight: 700; font-size: 15px;
+    cursor: pointer; transition: transform .1s, box-shadow .15s; font-family: inherit;
+    box-shadow: 0 8px 24px rgba(255, 255, 255, 0.12);
+  }
+  button.primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 10px 30px rgba(255, 255, 255, 0.2); }
+  button.primary:active:not(:disabled) { transform: translateY(0); }
+  button.primary:disabled { opacity: .35; cursor: not-allowed; box-shadow: none; }
+
+  .warn {
+    font-size: 12.5px; color: var(--text); margin-top: 14px; padding: 10px 13px;
+    background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+    border-radius: 9px; display: none;
+  }
+
+  #progress { display: none; }
+  .stepper { display: flex; align-items: center; gap: 6px; margin-bottom: 18px; }
+  .stepper .seg { flex: 1; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.08); overflow: hidden; }
+  .stepper .seg .fill { height: 100%; width: 0%; background: var(--accent-grad); transition: width .4s ease; }
+  .stage-line { display: flex; align-items: center; gap: 11px; font-size: 14px; color: var(--text); }
+  .spinner {
+    width: 15px; height: 15px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.12);
+    border-top-color: var(--accent); animation: spin 0.8s linear infinite; flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .stage-sub { font-size: 12.5px; color: var(--muted-dim); margin-top: 4px; font-family: var(--mono); }
+
+  .stat-chips { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 4px; }
+  .stat-chip {
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 16px; flex: 1; min-width: 130px;
+  }
+  .stat-chip .label { font-size: 11px; color: var(--muted-dim); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+  .stat-chip .value { font-size: 19px; font-weight: 700; margin-top: 2px; }
+  .stat-chip .value.accent { color: var(--accent); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 16px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted-dim); font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.04em; }
+  td { font-weight: 500; }
+
+  #results { display: none; }
+  .videos { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 20px 0; }
+  .video-card { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: #000; }
+  .video-card .tag {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+    padding: 8px 12px; color: var(--muted); background: #0d0e14;
+  }
+  .video-card.edited .tag { color: var(--accent); }
+  video { width: 100%; display: block; background: #000; }
+  .dl-row { margin-top: 4px; display: flex; gap: 10px; }
+  .dl-row a {
+    color: var(--accent-text); background: var(--accent-grad); text-decoration: none; padding: 10px 18px;
+    border-radius: 9px; font-size: 13px; font-weight: 700;
+  }
+  .dl-row a.secondary { background: transparent; color: var(--text); border: 1px solid var(--border); }
+  .dl-row a.secondary:hover { border-color: var(--border-hover); }
+  .err {
+    color: var(--danger); font-size: 13.5px; margin-top: 14px; display: none;
+    background: rgba(255,255,255,0.05); border: 1px solid var(--border-hover);
+    padding: 10px 13px; border-radius: 9px;
+  }
+  @media (max-width: 640px) { .videos { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <div class="brand-mark">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M4 4L20 20M20 4L4 20" stroke="#06251b" stroke-width="3" stroke-linecap="round"/></svg>
+    </div>
+    <h1>jumpcut</h1>
+  </div>
+  <p class="sub">Drop one or more clips (or paste Loom links) — stitches them in order, cuts silence, kills filler words, burns captions in one pass.</p>
+
+  <div class="step-label"><span class="num">1</span>Add your clips</div>
+  <div class="panel">
+    <div id="drop">
+      <div class="icon">↑</div>
+      <p class="big">Drag video(s) here, or click to choose files</p>
+      <p>MP4, MOV, whatever ffmpeg can read — add multiple to stitch them together</p>
+      <input type="file" id="fileInput" accept="video/*" multiple />
+    </div>
+    <div class="urlrow">
+      <input id="urlInput" type="text" placeholder="…or paste a Loom share URL: https://www.loom.com/share/…" />
+      <button id="addUrlBtn" type="button">Add clip</button>
+    </div>
+
+    <div id="queue"></div>
+    <p id="queueHint">Drag rows (⠿) to reorder — clips are stitched in this order before editing.</p>
+  </div>
+
+  <div class="step-label"><span class="num">2</span>Choose your edits</div>
+  <div class="panel">
+    <div class="options">
+      <div class="opt">
+        <label for="optSilence">Cut silence<span class="hint">Remove dead air &amp; long pauses</span></label>
+        <span class="switch"><input type="checkbox" id="optSilence" checked><span class="track"></span></span>
+      </div>
+      <div class="opt">
+        <label for="optFillers">Remove filler words<span class="hint">um, uh, erm...</span></label>
+        <span class="switch"><input type="checkbox" id="optFillers" checked><span class="track"></span></span>
+      </div>
+      <div class="opt">
+        <label for="optCaptions">Burn in captions<span class="hint">Word-accurate, always visible</span></label>
+        <span class="switch"><input type="checkbox" id="optCaptions" checked><span class="track"></span></span>
+      </div>
+      <div class="opt">
+        <label for="optRetakes">Cut retakes<span class="hint">Needs ANTHROPIC_API_KEY</span></label>
+        <span class="switch"><input type="checkbox" id="optRetakes"><span class="track"></span></span>
+      </div>
+      <div class="opt">
+        <label for="optAggressive">Aggressive fillers<span class="hint">Also cuts like / so / actually</span></label>
+        <span class="switch"><input type="checkbox" id="optAggressive"><span class="track"></span></span>
+      </div>
+      <div class="model-row">
+        <label for="optModel" style="flex:1">Whisper model</label>
+        <select id="optModel">
+          <option value="tiny">tiny (fastest)</option>
+          <option value="base" selected>base</option>
+          <option value="small">small</option>
+          <option value="medium">medium (slow)</option>
+        </select>
+      </div>
+      <div class="slider-row">
+        <label for="optMinGap" style="flex:1">Min pause to cut</label>
+        <input type="range" id="optMinGap" min="0.2" max="2.0" step="0.1" value="0.6">
+        <span id="optMinGapVal">0.6s</span>
+      </div>
+    </div>
+
+    <div class="warn" id="captionWarn">
+      ⚠ This ffmpeg build is missing even the core `overlay` filter — captions will be a toggleable soft track instead of burned in. This is very unusual.
+    </div>
+
+    <button class="primary" id="submitBtn">Edit video</button>
+    <div class="err" id="errBox"></div>
+  </div>
+
+  <div class="panel" id="progress">
+    <div class="stepper">
+      <div class="seg"><div class="fill" id="stepFill1"></div></div>
+      <div class="seg"><div class="fill" id="stepFill2"></div></div>
+      <div class="seg"><div class="fill" id="stepFill3"></div></div>
+      <div class="seg"><div class="fill" id="stepFill4"></div></div>
+    </div>
+    <div class="stage-line"><div class="spinner"></div><span id="stageText">Starting…</span></div>
+    <div class="stage-sub" id="stageSub"></div>
+  </div>
+
+  <div class="panel" id="results">
+    <div class="stat-chips" id="statChips"></div>
+    <div id="statsTable"></div>
+    <div class="videos">
+      <div class="video-card"><div class="tag">Original</div><video id="origVideo" controls></video></div>
+      <div class="video-card edited"><div class="tag">Edited</div><video id="editVideo" controls></video></div>
+    </div>
+    <div class="dl-row">
+      <a id="dlVideo" download>Download video</a>
+      <a id="dlSrt" class="secondary" download style="display:none">Download .srt</a>
+    </div>
+  </div>
+</div>
+
+<script>
+const drop = document.getElementById('drop');
+const fileInput = document.getElementById('fileInput');
+const urlInput = document.getElementById('urlInput');
+const addUrlBtn = document.getElementById('addUrlBtn');
+const queueEl = document.getElementById('queue');
+const queueHint = document.getElementById('queueHint');
+const submitBtn = document.getElementById('submitBtn');
+const errBox = document.getElementById('errBox');
+const progressBox = document.getElementById('progress');
+const stageText = document.getElementById('stageText');
+const stageSub = document.getElementById('stageSub');
+const results = document.getElementById('results');
+const captionWarn = document.getElementById('captionWarn');
+const minGap = document.getElementById('optMinGap');
+const minGapVal = document.getElementById('optMinGapVal');
+const stepFills = [1,2,3,4].map(i => document.getElementById('stepFill'+i));
+
+// Each queue item: { uid, kind: 'file'|'url', file?: File, value?: string, label: string }
+let queue = [];
+let uidCounter = 0;
+let dragUid = null;
+
+minGap.addEventListener('input', () => minGapVal.textContent = minGap.value + 's');
+
+drop.addEventListener('click', () => fileInput.click());
+drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('drag'); });
+drop.addEventListener('dragleave', () => drop.classList.remove('drag'));
+drop.addEventListener('drop', e => {
+  e.preventDefault(); drop.classList.remove('drag');
+  addFiles(e.dataTransfer.files);
+});
+fileInput.addEventListener('change', () => { addFiles(fileInput.files); fileInput.value = ''; });
+
+addUrlBtn.addEventListener('click', () => {
+  const v = urlInput.value.trim();
+  if (!v) return;
+  queue.push({ uid: ++uidCounter, kind: 'url', value: v, label: v });
+  urlInput.value = '';
+  renderQueue();
+});
+urlInput.addEventListener('keydown', e => { if (e.key === 'Enter') addUrlBtn.click(); });
+
+function addFiles(fileList) {
+  for (const f of fileList) {
+    if (!f.type.startsWith('video/') && !/\.(mp4|mov|mkv|webm|avi)$/i.test(f.name)) continue;
+    queue.push({ uid: ++uidCounter, kind: 'file', file: f, label: f.name });
+  }
+  renderQueue();
+}
+
+function renderQueue() {
+  queueEl.innerHTML = '';
+  queueHint.style.display = queue.length > 1 ? 'block' : 'none';
+  queue.forEach((item, idx) => {
+    const row = document.createElement('div');
+    row.className = 'clip-row';
+    row.draggable = true;
+    row.dataset.uid = item.uid;
+    row.innerHTML = `
+      <span class="handle">⠿</span>
+      <span class="order-badge">${idx + 1}</span>
+      <span class="clip-name">${escapeHtml(item.label)}</span>
+      <span class="clip-kind">${item.kind}</span>
+      <button class="remove-btn" type="button" title="Remove">✕</button>
+    `;
+    row.querySelector('.remove-btn').addEventListener('click', () => {
+      queue = queue.filter(q => q.uid !== item.uid);
+      renderQueue();
+    });
+    row.addEventListener('dragstart', () => { dragUid = item.uid; row.classList.add('dragging'); });
+    row.addEventListener('dragend', () => row.classList.remove('dragging'));
+    row.addEventListener('dragover', e => { e.preventDefault(); row.classList.add('drag-over'); });
+    row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+    row.addEventListener('drop', e => {
+      e.preventDefault();
+      row.classList.remove('drag-over');
+      if (dragUid === null || dragUid === item.uid) return;
+      const fromIdx = queue.findIndex(q => q.uid === dragUid);
+      const toIdx = queue.findIndex(q => q.uid === item.uid);
+      const [moved] = queue.splice(fromIdx, 1);
+      queue.splice(toIdx, 0, moved);
+      dragUid = null;
+      renderQueue();
+    });
+    queueEl.appendChild(row);
+  });
+}
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+fetch('/api/capabilities').then(r => r.json()).then(caps => {
+  if (!caps.can_burn_captions) captionWarn.style.display = 'block';
+});
+
+const STAGE_LABELS = {
+  queued: 'Queued…',
+  resolving: 'Resolving clip…',
+  concatenating: 'Stitching clips together…',
+  concatenated: 'Clips combined…',
+  source_ready: 'Source ready…',
+  transcribing: 'Transcribing…',
+  transcribed: 'Transcribed…',
+  analyzing: 'Planning edits…',
+  planned: 'Plan ready…',
+  rendering: 'Rendering with ffmpeg…',
+  rendered: 'Render complete…',
+  done: 'Done!',
+  error: 'Error',
+};
+// which stepper segment (0-3) is "active/complete" as of this stage
+const STAGE_STEP = {
+  queued: 0, resolving: 0, concatenating: 0, concatenated: 0, source_ready: 0,
+  transcribing: 1, transcribed: 1,
+  analyzing: 2, planned: 2,
+  rendering: 3, rendered: 3, done: 4,
+};
+
+submitBtn.addEventListener('click', async () => {
+  errBox.style.display = 'none';
+  if (queue.length === 0) {
+    errBox.textContent = 'Add at least one file or Loom URL first.';
+    errBox.style.display = 'block';
+    return;
+  }
+  submitBtn.disabled = true;
+  results.style.display = 'none';
+  progressBox.style.display = 'block';
+  stepFills.forEach(f => f.style.width = '0%');
+  stageText.textContent = STAGE_LABELS.queued;
+  stageSub.textContent = '';
+
+  const form = new FormData();
+  const items = queue.map((item, idx) => {
+    if (item.kind === 'file') {
+      const id = `clip_${idx}`;
+      form.append(id, item.file);
+      return { kind: 'file', id };
+    }
+    return { kind: 'url', value: item.value };
+  });
+  form.append('items', JSON.stringify(items));
+  form.append('silence', document.getElementById('optSilence').checked);
+  form.append('fillers', document.getElementById('optFillers').checked);
+  form.append('captions', document.getElementById('optCaptions').checked);
+  form.append('retakes', document.getElementById('optRetakes').checked);
+  form.append('aggressive_fillers', document.getElementById('optAggressive').checked);
+  form.append('whisper_model', document.getElementById('optModel').value);
+  form.append('min_gap', minGap.value);
+
+  let jobId;
+  try {
+    const resp = await fetch('/api/jobs', { method: 'POST', body: form });
+    if (!resp.ok) throw new Error((await resp.json()).detail || 'Failed to start job');
+    jobId = (await resp.json()).job_id;
+  } catch (e) {
+    showError(e.message);
+    return;
+  }
+
+  poll(jobId);
+});
+
+async function poll(jobId) {
+  const resp = await fetch(`/api/jobs/${jobId}`);
+  const job = await resp.json();
+
+  if (job.error) { showError(job.error); return; }
+
+  let label = STAGE_LABELS[job.stage] || job.stage;
+  let sub = '';
+  if (job.stage === 'resolving' && job.detail && job.detail.total > 1) {
+    label = `Resolving clip ${job.detail.index + 1}/${job.detail.total}…`;
+  } else if (job.stage === 'transcribing' && job.detail && job.detail.total) {
+    label = `Transcribing (${job.detail.done.toFixed(0)}s / ${job.detail.total.toFixed(0)}s)`;
+  }
+  if (job.clips && job.clips.length) {
+    sub = job.clips.map(c => {
+      const short = c.duration < 5 ? ' ⚠ short clip' : '';
+      return `clip ${c.index + 1}: ${c.duration.toFixed(1)}s${short}`;
+    }).join('  ·  ');
+  }
+  stageText.textContent = label;
+  stageSub.textContent = sub;
+
+  const step = STAGE_STEP[job.stage] ?? 0;
+  stepFills.forEach((f, i) => f.style.width = i < step ? '100%' : (i === step ? '55%' : '0%'));
+
+  if (job.stage === 'done') {
+    finish(job);
+    return;
+  }
+  setTimeout(() => poll(jobId), 900);
+}
+
+function showError(msg) {
+  submitBtn.disabled = false;
+  progressBox.style.display = 'none';
+  errBox.textContent = msg;
+  errBox.style.display = 'block';
+}
+
+function finish(job) {
+  submitBtn.disabled = false;
+  progressBox.style.display = 'none';
+  results.style.display = 'block';
+
+  document.getElementById('origVideo').src = job.original_url || '';
+  document.getElementById('editVideo').src = job.output_url || '';
+  document.getElementById('dlVideo').href = job.output_url || '#';
+
+  const srtLink = document.getElementById('dlSrt');
+  if (job.srt_url) { srtLink.href = job.srt_url; srtLink.style.display = 'inline-block'; }
+  else { srtLink.style.display = 'none'; }
+
+  const s = job.plan_stats;
+  const chips = document.getElementById('statChips');
+  const statsTable = document.getElementById('statsTable');
+  if (s) {
+    chips.innerHTML = `
+      <div class="stat-chip"><div class="label">Original</div><div class="value">${s.original_duration.toFixed(0)}s</div></div>
+      <div class="stat-chip"><div class="label">Edited</div><div class="value accent">${s.final_duration.toFixed(0)}s</div></div>
+      <div class="stat-chip"><div class="label">Removed</div><div class="value">-${s.removed_duration.toFixed(0)}s</div></div>
+      <div class="stat-chip"><div class="label">Shorter by</div><div class="value accent">${s.percent_shorter.toFixed(0)}%</div></div>
+    `;
+    let rows = '';
+    for (const [reason, d] of Object.entries(s.by_reason)) {
+      rows += `<tr><td>${reason}</td><td>${d.count}</td><td>${d.seconds.toFixed(1)}s</td></tr>`;
+    }
+    statsTable.innerHTML = `<table><tr><th>Reason</th><th>Cuts</th><th>Time removed</th></tr>${rows}</table>`;
+  } else {
+    chips.innerHTML = '';
+    statsTable.innerHTML = '';
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+[project]
+name = "jumpcut"
+version = "0.1.0"
+description = "AI auto-editor for Loom videos: stitches multiple clips, cuts silence, kills filler words, removes retakes, burns captions. CLI + local web GUI."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "typer>=0.12",
+    "rich>=13.7",
+    "faster-whisper>=1.0",
+    "yt-dlp>=2024.8",
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+    "python-multipart>=0.0.9",
+    "pillow>=10.0",
+]
+
+[project.optional-dependencies]
+retakes = ["anthropic>=0.40"]
+
+[project.scripts]
+jumpcut = "jumpcut.cli:app"
+jumpcut-web = "jumpcut.web:main"
+
+[build-system]
+requires = ["uv_build>=0.11.18,<0.12.0"]
+build-backend = "uv_build"
